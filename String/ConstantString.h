@@ -11,13 +11,11 @@ typedef struct {
 #define CS_Fmt "%.*s"
 #define CS_Arg(cs) (cs)->count, (cs)->data
 
-#ifdef CONSTANT_STRING_IMPLEMENTATION
-
-#    define ConstantStringAssemble(str, len) \
-        (ConstantString) {                   \
-            .data = (str),                   \
-            .count = (len),                  \
-        }
+#define ConstantStringAssemble(str, len) \
+    (ConstantString) {                   \
+        .data = (str),                   \
+        .count = (len),                  \
+    }
 
 void ConstantStringPrint(ConstantString *cs) {
     if (cs->data) {
@@ -31,7 +29,7 @@ void ConstantStringPrintN(ConstantString *cs) {
     }
 }
 
-#    define cs_is_space(c) ((c) == ' ' || (c) == '\n' || (c) == '\t' || (c) == '\r' || (c) == '\v' || (c) == '\f')
+#define cs_is_space(c) ((c) == ' ' || (c) == '\n' || (c) == '\t' || (c) == '\r' || (c) == '\v' || (c) == '\f')
 
 void ConstantStringTrimLeft(ConstantString *cs) {
     while (cs_is_space(*cs->data)) {
@@ -112,10 +110,8 @@ int ConstantStringFindChar(ConstantString *cs, char c) {
     return -1;
 }
 
-#    define ConstantStringForeachLine(var, cs) for (ConstantString var = ConstantStringGetLine((cs)); \
-                                                    var.data;                                         \
-                                                    var = ConstantStringGetLine((cs)))
-
-#endif // CONSTANT_STRING_IMPLEMENTATION
+#define ConstantStringForeachLine(var, cs) for (ConstantString var = ConstantStringGetLine((cs)); \
+                                                var.data;                                         \
+                                                var = ConstantStringGetLine((cs)))
 
 #endif // _CONSTANT_STRING_H

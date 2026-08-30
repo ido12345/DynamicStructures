@@ -40,8 +40,8 @@ typedef DYNAMIC_HASHHEAP_UINT DHH_UInt;
         DHH_Int *heapData;                                                                                \
         DHH_Int heapCount;                                                                                \
         DHH_Int heapCapacity;                                                                             \
-        DHH_UInt (*hashFunc)(const keyType *);                                                            \
-        int (*cmpKeyFunc)(const keyType *, const keyType *);                                              \
+        DHH_UInt (*hashFunc)(keyType);                                                                    \
+        int (*cmpKeyFunc)(keyType, keyType);                                                              \
         void (*printFunc)(const DynamicHashHeapItemName(name) *);                                         \
         int (*cmpHeapFunc)(const DynamicHashHeapItemName(name) *, const DynamicHashHeapItemName(name) *); \
     }
@@ -115,7 +115,7 @@ typedef DYNAMIC_HASHHEAP_UINT DHH_UInt;
                 if (__dhhr_cur.state != DHH_KV_DIRTY) continue;                                                      \
                 (dhh)->data[__dhhr_i].state = DHH_KV_EMPTY;                                                          \
                 while (__dhhr_cur.state != DHH_KV_EMPTY) {                                                           \
-                    DHH_UInt __dhhr_hashIdx = (dhh)->hashFunc(&__dhhr_cur.key) % __dhhr_newCapacity;                 \
+                    DHH_UInt __dhhr_hashIdx = (dhh)->hashFunc(__dhhr_cur.key) % __dhhr_newCapacity;                  \
                     while ((dhh)->data[__dhhr_hashIdx].state == DHH_KV_TAKEN) {                                      \
                         __dhhr_hashIdx = (__dhhr_hashIdx + 1) % __dhhr_newCapacity;                                  \
                     }                                                                                                \
@@ -221,52 +221,52 @@ typedef DYNAMIC_HASHHEAP_UINT DHH_UInt;
         }                                                                                                    \
     } while (0)
 
-#define DYNAMIC_HASHHEAP_INSERT_NOGROW(dhh, k, v)                                                                                     \
-    do {                                                                                                                              \
-        DHH_UInt __dhhi_hashIdx = (dhh)->hashFunc(&(k)) % (dhh)->capacity;                                                            \
-        while ((dhh)->data[__dhhi_hashIdx].state == DHH_KV_TAKEN && (dhh)->cmpKeyFunc(&(k), &(dhh)->data[__dhhi_hashIdx].key) != 0) { \
-            __dhhi_hashIdx = (__dhhi_hashIdx + 1) % (dhh)->capacity;                                                                  \
-        }                                                                                                                             \
-        (dhh)->data[__dhhi_hashIdx].value = (v);                                                                                      \
-        if ((dhh)->data[__dhhi_hashIdx].state != DHH_KV_TAKEN) {                                                                      \
-            (dhh)->count++;                                                                                                           \
-            (dhh)->data[__dhhi_hashIdx].state = DHH_KV_TAKEN;                                                                         \
-            (dhh)->data[__dhhi_hashIdx].key = (k);                                                                                    \
-            DHH_Int __dhhi_heapIdx = (dhh)->heapCount;                                                                                \
-            (dhh)->data[__dhhi_hashIdx].heapIndex = __dhhi_heapIdx;                                                                   \
-            DynamicHashHeapInsertHeap((dhh), __dhhi_hashIdx);                                                                         \
-        }                                                                                                                             \
+#define DYNAMIC_HASHHEAP_INSERT_NOGROW(dhh, k, v)                                                                                   \
+    do {                                                                                                                            \
+        DHH_UInt __dhhi_hashIdx = (dhh)->hashFunc((k)) % (dhh)->capacity;                                                           \
+        while ((dhh)->data[__dhhi_hashIdx].state == DHH_KV_TAKEN && (dhh)->cmpKeyFunc((k), (dhh)->data[__dhhi_hashIdx].key) != 0) { \
+            __dhhi_hashIdx = (__dhhi_hashIdx + 1) % (dhh)->capacity;                                                                \
+        }                                                                                                                           \
+        (dhh)->data[__dhhi_hashIdx].value = (v);                                                                                    \
+        if ((dhh)->data[__dhhi_hashIdx].state != DHH_KV_TAKEN) {                                                                    \
+            (dhh)->count++;                                                                                                         \
+            (dhh)->data[__dhhi_hashIdx].state = DHH_KV_TAKEN;                                                                       \
+            (dhh)->data[__dhhi_hashIdx].key = (k);                                                                                  \
+            DHH_Int __dhhi_heapIdx = (dhh)->heapCount;                                                                              \
+            (dhh)->data[__dhhi_hashIdx].heapIndex = __dhhi_heapIdx;                                                                 \
+            DynamicHashHeapInsertHeap((dhh), __dhhi_hashIdx);                                                                       \
+        }                                                                                                                           \
     } while (0)
 
 #define DynamicHashHeapInsert(dhh, k, v)                                    \
     do {                                                                    \
         DYNAMIC_HASHHEAP_HASH_ASSERT(dhh);                                  \
         DYNAMIC_HASHHEAP_CMP_ASSERT(dhh);                                   \
-        DynamicHashHeapReserve((dhh), (dhh)->count + (dhh)->count / 4 + 1); \
+        DynamicHashHeapReserve((dhh), (dhh)->count + (dhh)->count / 3 + 2); \
         DYNAMIC_HASHHEAP_INSERT_NOGROW((dhh), (k), (v));                    \
     } while (0)
 
-#define DYNAMIC_HASHHEAP_FIND_KEY_INDEX(dhh, k, i)                                                                                                          \
-    while (((dhh)->data[(i)].state == DHH_KV_DELETED) || ((dhh)->data[(i)].state != DHH_KV_EMPTY && (dhh)->cmpKeyFunc(&(k), &(dhh)->data[(i)].key) != 0)) { \
-        i = ((i) + 1) % (dhh)->capacity;                                                                                                                    \
+#define DYNAMIC_HASHHEAP_FIND_KEY_INDEX(dhh, k, i)                                                                                                        \
+    while (((dhh)->data[(i)].state == DHH_KV_DELETED) || ((dhh)->data[(i)].state != DHH_KV_EMPTY && (dhh)->cmpKeyFunc((k), (dhh)->data[(i)].key) != 0)) { \
+        i = ((i) + 1) % (dhh)->capacity;                                                                                                                  \
     }
 
-#define DynamicHashHeapRemove(dhh, k)                                                                     \
-    do {                                                                                                  \
-        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                            \
-            DYNAMIC_HASHHEAP_HASH_ASSERT(dhh);                                                            \
-            DYNAMIC_HASHHEAP_CMP_ASSERT(dhh);                                                             \
-            DHH_UInt __dhhrm_hashIdx = (dhh)->hashFunc(&(k)) % (dhh)->capacity;                           \
-            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhrm_hashIdx);                                 \
-            if ((dhh)->data[__dhhrm_hashIdx].state == DHH_KV_TAKEN) {                                     \
-                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc(&(k), &(dhh)->data[__dhhrm_hashIdx].key) == 0); \
-                (dhh)->count--;                                                                           \
-                DYNAMIC_HASHHEAP_VAR_EMPTY_INIT((dhh)->data[__dhhrm_hashIdx].key);                        \
-                DYNAMIC_HASHHEAP_VAR_EMPTY_INIT((dhh)->data[__dhhrm_hashIdx].value);                      \
-                (dhh)->data[__dhhrm_hashIdx].state = DHH_KV_DELETED;                                      \
-                DynamicHashHeapRemoveHeap((dhh), (dhh)->data[__dhhrm_hashIdx].heapIndex);                 \
-            }                                                                                             \
-        }                                                                                                 \
+#define DynamicHashHeapRemove(dhh, k)                                                                   \
+    do {                                                                                                \
+        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                          \
+            DYNAMIC_HASHHEAP_HASH_ASSERT(dhh);                                                          \
+            DYNAMIC_HASHHEAP_CMP_ASSERT(dhh);                                                           \
+            DHH_UInt __dhhrm_hashIdx = (dhh)->hashFunc((k)) % (dhh)->capacity;                          \
+            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhrm_hashIdx);                               \
+            if ((dhh)->data[__dhhrm_hashIdx].state == DHH_KV_TAKEN) {                                   \
+                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc((k), (dhh)->data[__dhhrm_hashIdx].key) == 0); \
+                (dhh)->count--;                                                                         \
+                DYNAMIC_HASHHEAP_VAR_EMPTY_INIT((dhh)->data[__dhhrm_hashIdx].key);                      \
+                DYNAMIC_HASHHEAP_VAR_EMPTY_INIT((dhh)->data[__dhhrm_hashIdx].value);                    \
+                (dhh)->data[__dhhrm_hashIdx].state = DHH_KV_DELETED;                                    \
+                DynamicHashHeapRemoveHeap((dhh), (dhh)->data[__dhhrm_hashIdx].heapIndex);               \
+            }                                                                                           \
+        }                                                                                               \
     } while (0)
 
 #define DynamicHashHeapGetHead(dhh, ret)             \
@@ -290,74 +290,74 @@ typedef DYNAMIC_HASHHEAP_UINT DHH_UInt;
         ret = __dhheh_ret;                                                                     \
     } while (0)
 
-#define DynamicHashHeapGetIndex(dhh, k, ret)                                                              \
-    do {                                                                                                  \
-        DHH_Int __dhhgi_ret = -1;                                                                         \
-        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                            \
-            DHH_UInt __dhhgi_hashIdx = (dhh)->hashFunc(&(k)) % (dhh)->capacity;                           \
-            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhgi_hashIdx);                                 \
-            if ((dhh)->data[__dhhgi_hashIdx].state == DHH_KV_TAKEN) {                                     \
-                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc(&(k), &(dhh)->data[__dhhgi_hashIdx].key) == 0); \
-                __dhhgi_ret = __dhhgi_hashIdx;                                                            \
-            }                                                                                             \
-        }                                                                                                 \
-        ret = __dhhgi_ret;                                                                                \
+#define DynamicHashHeapGetIndex(dhh, k, ret)                                                            \
+    do {                                                                                                \
+        DHH_Int __dhhgi_ret = -1;                                                                       \
+        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                          \
+            DHH_UInt __dhhgi_hashIdx = (dhh)->hashFunc((k)) % (dhh)->capacity;                          \
+            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhgi_hashIdx);                               \
+            if ((dhh)->data[__dhhgi_hashIdx].state == DHH_KV_TAKEN) {                                   \
+                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc((k), (dhh)->data[__dhhgi_hashIdx].key) == 0); \
+                __dhhgi_ret = __dhhgi_hashIdx;                                                          \
+            }                                                                                           \
+        }                                                                                               \
+        ret = __dhhgi_ret;                                                                              \
     } while (0)
 
-#define DynamicHashHeapGetValue(dhh, k, ret)                                                              \
-    do {                                                                                                  \
-        typeof((dhh)->data[0].value) __dhhgv_ret = {};                                                    \
-        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                            \
-            DHH_UInt __dhhgv_hashIdx = (dhh)->hashFunc(&(k)) % (dhh)->capacity;                           \
-            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhgv_hashIdx);                                 \
-            if ((dhh)->data[__dhhgv_hashIdx].state == DHH_KV_TAKEN) {                                     \
-                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc(&(k), &(dhh)->data[__dhhgv_hashIdx].key) == 0); \
-                __dhhgv_ret = (dhh)->data[__dhhgv_hashIdx].value;                                         \
-            }                                                                                             \
-        }                                                                                                 \
-        ret = __dhhgv_ret;                                                                                \
+#define DynamicHashHeapGetValue(dhh, k, ret)                                                            \
+    do {                                                                                                \
+        typeof((dhh)->data[0].value) __dhhgv_ret = {};                                                  \
+        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                          \
+            DHH_UInt __dhhgv_hashIdx = (dhh)->hashFunc((k)) % (dhh)->capacity;                          \
+            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhgv_hashIdx);                               \
+            if ((dhh)->data[__dhhgv_hashIdx].state == DHH_KV_TAKEN) {                                   \
+                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc((k), (dhh)->data[__dhhgv_hashIdx].key) == 0); \
+                __dhhgv_ret = (dhh)->data[__dhhgv_hashIdx].value;                                       \
+            }                                                                                           \
+        }                                                                                               \
+        ret = __dhhgv_ret;                                                                              \
     } while (0)
 
-#define DynamicHashHeapGetValuePtr(dhh, k, ret)                                                            \
-    do {                                                                                                   \
-        typeof((dhh)->data[0].value) *__dhhgvp_ret = {};                                                   \
-        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                             \
-            DHH_UInt __dhhgvp_hashIdx = (dhh)->hashFunc(&(k)) % (dhh)->capacity;                           \
-            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhgvp_hashIdx);                                 \
-            if ((dhh)->data[__dhhgvp_hashIdx].state == DHH_KV_TAKEN) {                                     \
-                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc(&(k), &(dhh)->data[__dhhgvp_hashIdx].key) == 0); \
-                __dhhgvp_ret = &(dhh)->data[__dhhgvp_hashIdx].value;                                       \
-            }                                                                                              \
-        }                                                                                                  \
-        ret = __dhhgvp_ret;                                                                                \
+#define DynamicHashHeapGetValuePtr(dhh, k, ret)                                                          \
+    do {                                                                                                 \
+        typeof((dhh)->data[0].value) *__dhhgvp_ret = {};                                                 \
+        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                           \
+            DHH_UInt __dhhgvp_hashIdx = (dhh)->hashFunc((k)) % (dhh)->capacity;                          \
+            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhgvp_hashIdx);                               \
+            if ((dhh)->data[__dhhgvp_hashIdx].state == DHH_KV_TAKEN) {                                   \
+                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc((k), (dhh)->data[__dhhgvp_hashIdx].key) == 0); \
+                __dhhgvp_ret = &(dhh)->data[__dhhgvp_hashIdx].value;                                     \
+            }                                                                                            \
+        }                                                                                                \
+        ret = __dhhgvp_ret;                                                                              \
     } while (0)
 
-#define DynamicHashHeapGetKeyValue(dhh, k, ret)                                                            \
-    do {                                                                                                   \
-        typeof((dhh)->data[0]) __dhhgkv_ret = {};                                                          \
-        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                             \
-            DHH_UInt __dhhgkv_hashIdx = (dhh)->hashFunc(&(k)) % (dhh)->capacity;                           \
-            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhgkv_hashIdx);                                 \
-            if ((dhh)->data[__dhhgkv_hashIdx].state == DHH_KV_TAKEN) {                                     \
-                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc(&(k), &(dhh)->data[__dhhgkv_hashIdx].key) == 0); \
-                __dhhgkv_ret = (dhh)->data[__dhhgkv_hashIdx];                                              \
-            }                                                                                              \
-        }                                                                                                  \
-        ret = __dhhgkv_ret;                                                                                \
+#define DynamicHashHeapGetKeyValue(dhh, k, ret)                                                          \
+    do {                                                                                                 \
+        typeof((dhh)->data[0]) __dhhgkv_ret = {};                                                        \
+        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                           \
+            DHH_UInt __dhhgkv_hashIdx = (dhh)->hashFunc((k)) % (dhh)->capacity;                          \
+            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhgkv_hashIdx);                               \
+            if ((dhh)->data[__dhhgkv_hashIdx].state == DHH_KV_TAKEN) {                                   \
+                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc((k), (dhh)->data[__dhhgkv_hashIdx].key) == 0); \
+                __dhhgkv_ret = (dhh)->data[__dhhgkv_hashIdx];                                            \
+            }                                                                                            \
+        }                                                                                                \
+        ret = __dhhgkv_ret;                                                                              \
     } while (0)
 
-#define DynamicHashHeapGetKeyValuePtr(dhh, k, ret)                                                         \
-    do {                                                                                                   \
-        typeof((dhh)->data[0]) *__dhhgvp_ret = {};                                                         \
-        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                             \
-            DHH_UInt __dhhgvp_hashIdx = (dhh)->hashFunc(&(k)) % (dhh)->capacity;                           \
-            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhgvp_hashIdx);                                 \
-            if ((dhh)->data[__dhhgvp_hashIdx].state == DHH_KV_TAKEN) {                                     \
-                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc(&(k), &(dhh)->data[__dhhgvp_hashIdx].key) == 0); \
-                __dhhgvp_ret = &(dhh)->data[__dhhgvp_hashIdx];                                             \
-            }                                                                                              \
-        }                                                                                                  \
-        ret = __dhhgvp_ret;                                                                                \
+#define DynamicHashHeapGetKeyValuePtr(dhh, k, ret)                                                       \
+    do {                                                                                                 \
+        typeof((dhh)->data[0]) *__dhhgvp_ret = {};                                                       \
+        if (!DYNAMIC_HASHHEAP_IS_EMPTY(dhh)) {                                                           \
+            DHH_UInt __dhhgvp_hashIdx = (dhh)->hashFunc((k)) % (dhh)->capacity;                          \
+            DYNAMIC_HASHHEAP_FIND_KEY_INDEX((dhh), (k), __dhhgvp_hashIdx);                               \
+            if ((dhh)->data[__dhhgvp_hashIdx].state == DHH_KV_TAKEN) {                                   \
+                DYNAMIC_HASHHEAP_ASSERT((dhh)->cmpKeyFunc((k), (dhh)->data[__dhhgvp_hashIdx].key) == 0); \
+                __dhhgvp_ret = &(dhh)->data[__dhhgvp_hashIdx];                                           \
+            }                                                                                            \
+        }                                                                                                \
+        ret = __dhhgvp_ret;                                                                              \
     } while (0)
 
 #define DynamicHashHeapForeach(var, dhh)                                \

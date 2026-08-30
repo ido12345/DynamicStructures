@@ -14,14 +14,14 @@ typedef DYNAMIC_ARRAY_INT DA_Int;
 #define DynamicArrayStruct(type)         \
     struct {                             \
         type *data;                      \
-        DA_Int count;                   \
-        DA_Int capacity;                \
+        DA_Int count;                    \
+        DA_Int capacity;                 \
         void (*printFunc)(const type *); \
     }
 #define DynamicArraySliceStruct(type)    \
     struct {                             \
         const type *data;                \
-        const DA_Int count;             \
+        const DA_Int count;              \
         void (*printFunc)(const type *); \
     }
 
@@ -43,7 +43,7 @@ typedef DYNAMIC_ARRAY_INT DA_Int;
 
 #define DynamicArrayReserve(da, newsize)                                            \
     do {                                                                            \
-        DA_Int __dar_newSize = (newsize);                                          \
+        DA_Int __dar_newSize = (newsize);                                           \
         if ((da)->capacity < __dar_newSize) {                                       \
             if ((da)->capacity == 0) {                                              \
                 (da)->capacity = DYNAMIC_ARRAY_DEFAULT_SIZE;                        \
@@ -62,16 +62,16 @@ typedef DYNAMIC_ARRAY_INT DA_Int;
         (da)->data[(da)->count++] = (x);            \
     } while (0)
 
-#define DynamicArrayRemoveAt(da, i)                                                                       \
-    do {                                                                                                  \
-        if ((da)->data) {                                                                                 \
-            if ((i) >= 0 && (i) < (da)->count) {                                                          \
+#define DynamicArrayRemoveAt(da, i)                                                                      \
+    do {                                                                                                 \
+        if ((da)->data) {                                                                                \
+            if ((i) >= 0 && (i) < (da)->count) {                                                         \
                 for (DA_Int __dara_shiftIdx = i; __dara_shiftIdx < (da)->count - 1; __dara_shiftIdx++) { \
-                    (da)->data[__dara_shiftIdx] = (da)->data[__dara_shiftIdx + 1];                        \
-                }                                                                                         \
-                (da)->count--;                                                                            \
-            }                                                                                             \
-        }                                                                                                 \
+                    (da)->data[__dara_shiftIdx] = (da)->data[__dara_shiftIdx + 1];                       \
+                }                                                                                        \
+                (da)->count--;                                                                           \
+            }                                                                                            \
+        }                                                                                                \
     } while (0)
 
 #define DynamicArrayIsEmpty(da) ((da)->count == 0)
@@ -84,7 +84,7 @@ typedef DYNAMIC_ARRAY_INT DA_Int;
     do {                                                                       \
         DYNAMIC_ARRAY_ASSERT("No print function provided" && (da)->printFunc); \
         printf("[");                                                           \
-        for (DA_Int __dap_i = 0; __dap_i < (da)->count; __dap_i++) {          \
+        for (DA_Int __dap_i = 0; __dap_i < (da)->count; __dap_i++) {           \
             (da)->printFunc(&(da)->data[__dap_i]);                             \
             if (__dap_i < (da)->count - 1) {                                   \
                 printf(", ");                                                  \

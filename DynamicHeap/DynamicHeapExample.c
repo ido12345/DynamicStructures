@@ -4,7 +4,7 @@
 #define DYNAMIC_HEAP_IMPLEMENTATION
 #include "DynamicHeap.h"
 
-DefineDynamicHeap(StringHeap, char *);
+DefineDynamicHeap(StringHeap, const char *);
 
 int cmpStrMin(const char *a, const char *b) {
     return strcmp(a, b);
@@ -23,7 +23,7 @@ void printStr(const char *str) {
 
 // chatGPT generated example
 int main() {
-    printf("----------------- MinHeap Example -----------------\n");
+    printf("\n----------------- MinHeap Example -----------------\n");
 
     StringHeap minHeap = {.printFunc = printStr, .cmpFunc = cmpStrMin};
 
@@ -37,7 +37,7 @@ int main() {
     DynamicHeapPrintN(&minHeap);
 
     // Get head (min element)
-    char *head = DynamicHeapGetHead(&minHeap);
+    const char *head = DynamicHeapGetHead(&minHeap);
     printf("Head of heap (min): %s\n", head);
 
     // Extract head (min element)
@@ -60,9 +60,8 @@ int main() {
     // Destroy heap
     DynamicHeapDestroy(&minHeap);
 
-    printf("----------------- MinHeap Example -----------------\n");
-    printf("\n");
-    printf("----------------- MaxHeap Example -----------------\n");
+    printf("\n----------------- MinHeap Example -----------------\n");
+    printf("\n----------------- MaxHeap Example -----------------\n");
 
     StringHeap maxHeap = {.printFunc = printStr, .cmpFunc = cmpStrMax};
 
@@ -74,12 +73,11 @@ int main() {
     printf("Max Heap after insertions: ");
     DynamicHeapPrintN(&maxHeap);
 
-    // Find index of a specific element
-    int idx = DynamicHeapFind(&maxHeap, "Echo");
+    int idx = {};
+    DynamicHeapIndexOf(&maxHeap, "Echo", idx);
     printf("Index of \"Echo\" in heap: %d\n", idx);
 
-    // Extract max (head)
-    char *max = DynamicHeapExtractHead(&maxHeap);
+    const char *max = DynamicHeapExtractHead(&maxHeap);
     printf("Extracted head (max): %s\n", max);
 
     printf("Max Heap after extracting head: ");
@@ -87,5 +85,5 @@ int main() {
 
     DynamicHeapDestroy(&maxHeap);
 
-    printf("----------------- MaxHeap Example -----------------\n");
+    printf("\n----------------- MaxHeap Example -----------------\n");
 }

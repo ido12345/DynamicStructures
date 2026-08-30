@@ -14,11 +14,12 @@ void printStringFreqKeyValue(const StringFreqKeyValue *sfkv) {
     }
 }
 
-uint64_t stringHash(const char *str) {
-    uint64_t hash = 5381;
-    for (; *str; str++) {
+uint32_t stringHash(const char *str) {
+    int strLen = strlen(str);
+    uint32_t hash = 5381;
+    for (int i = 0; i < strLen; i++) {
         hash *= 33;
-        hash += *str;
+        hash += str[i];
     }
     return hash;
 }
@@ -75,37 +76,44 @@ int main() {
 #endif
 
     printf("--------------------------------------------------\n");
-    printf("TODO: not fully implemented yet\n");
-    /*
-    int idxOfAbc = DynamicHashmapGetIndex(&stringsFreq, "Abc");
-    StringFreqKeyValue AbcKV1 = (idxOfAbc > -1) ? stringsFreq.data[idxOfAbc] : (StringFreqKeyValue){0};
+
+    int idxOfAbc = {};
+    DynamicHashmapGetIndex(&stringsFreq, "Abc", idxOfAbc);
+    StringFreqKeyValue AbcKV1 = (idxOfAbc > -1) ? stringsFreq.data[idxOfAbc] : (StringFreqKeyValue){};
+    printStringFreqKeyValue(&AbcKV1);
+    printf("\n");
 
     // does exist, gets a shallow copy
-    // StringFreqKeyValue AbcKV2 = DynamicHashmapGetKeyValue(&stringsFreq, "Abc");
+    StringFreqKeyValue AbcKV2 = {};
+    DynamicHashmapGetKeyValue(&stringsFreq, "Abc", AbcKV2);
+    printStringFreqKeyValue(&AbcKV2);
+    printf("\n");
 
-    // doesnt exist, this returns an empty struct (values = {0}),
+    // doesnt exist, this returns an empty struct (values = {}),
     // and the KV state is KV_EMPTY so you know its not just values that are 0, its actually empty values
-    StringFreqKeyValue AbcKV3 = DynamicHashmapGetKeyValue(&stringsFreq, "ABc");
-    if (IS_KV_TAKEN(AbcKV3)) {
+    StringFreqKeyValue AbcKV3 = {};
+    DynamicHashmapGetKeyValue(&stringsFreq, "ABc", AbcKV3);
+    if (DHM_IS_KV_TAKEN(AbcKV3)) {
         printStringFreqKeyValue(&AbcKV3);
         printf("\n");
     }
 
-    StringFreqKeyValue *AbcKV4 = DynamicHashmapGetKeyValuePtr(&stringsFreq, "Abc");
+    StringFreqKeyValue *AbcKV4 = 0;
+    DynamicHashmapGetKeyValuePtr(&stringsFreq, "Abc", AbcKV4);
     AbcKV4->value = 10;
     // since this is a pointer the actual KV's value got updated in the hashmap
 
     // also this is dangerous because you could change the key and lose the... lemme just show you
 
     const char *saved = AbcKV4->key;
-    AbcKV4->key = NULL;
+    AbcKV4->key = nullptr;
 
     DynamicHashmapPrintN(&stringsFreq);
 
     // will ⚠️ segfault ⚠️ use with caution ⚠️
 #if false
-    AbcKV2 = DynamicHashmapGetKeyValue(&stringsFreq, "Abc");
-    if (IS_KV_TAKEN(AbcKV2)) {
+    DynamicHashmapGetKeyValue(&stringsFreq, "Abc", AbcKV2);
+    if (DHM_IS_KV_TAKEN(AbcKV2)) {
         printStringFreqKeyValue(&AbcKV2);
         printf("\n");
     }
@@ -115,7 +123,7 @@ int main() {
     AbcKV4->key = saved;
 
     DynamicHashmapPrintN(&stringsFreq);
-*/
+
     printf("--------------------------------------------------\n");
 
     // example of the hashmap not saving the order when removing

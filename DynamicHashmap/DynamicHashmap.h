@@ -41,8 +41,8 @@ typedef DYNAMIC_HASHMAP_UINT DHM_UInt;
         DHM_Int *addressData;                                    \
         DHM_Int addressCount;                                    \
         DHM_Int addressCapacity;                                 \
-        DHM_UInt (*hashFunc)(const keyType *);                   \
-        int (*cmpKeyFunc)(const keyType *, const keyType *);     \
+        DHM_UInt (*hashFunc)(keyType);                           \
+        DHM_Int (*cmpKeyFunc)(keyType, keyType);                 \
         void (*printFunc)(const DynamicHashmapItemName(name) *); \
     }
 
@@ -107,7 +107,7 @@ typedef DYNAMIC_HASHMAP_UINT DHM_UInt;
                 if (__dhmr_cur.state != DHM_KV_DIRTY) continue;                                                      \
                 (dhm)->data[__dhmr_i].state = DHM_KV_EMPTY;                                                          \
                 while (__dhmr_cur.state != DHM_KV_EMPTY) {                                                           \
-                    DHM_UInt __dhmr_initialHashIdx = (dhm)->hashFunc(&__dhmr_cur.key) % __dhmr_newCapacity;          \
+                    DHM_UInt __dhmr_initialHashIdx = (dhm)->hashFunc(__dhmr_cur.key) % __dhmr_newCapacity;           \
                     DHM_UInt __dhmr_hashIdx = __dhmr_initialHashIdx;                                                 \
                     while (DHM_IS_KV_TAKEN((dhm)->data[__dhmr_hashIdx])) {                                           \
                         __dhmr_hashIdx = (__dhmr_hashIdx + 1) % __dhmr_newCapacity;                                  \
@@ -150,38 +150,38 @@ typedef DYNAMIC_HASHMAP_UINT DHM_UInt;
         (dhm)->addressCount++;                                        \
     } while (0);
 
-#define DYNAMIC_HASHMAP_INSERT_NOGROW(dhm, k, v)                                                                                 \
-    do {                                                                                                                         \
-        DHM_UInt __dhmi_hashIdx = (dhm)->hashFunc(&(k)) % (dhm)->capacity;                                                       \
-        DHM_UInt __dhmi_initialHashIdx = __dhmi_hashIdx;                                                                         \
-        while (DHM_IS_KV_TAKEN((dhm)->data[__dhmi_hashIdx]) && (dhm)->cmpKeyFunc(&(k), &(dhm)->data[__dhmi_hashIdx].key) != 0) { \
-            __dhmi_hashIdx = (__dhmi_hashIdx + 1) % (dhm)->capacity;                                                             \
-        }                                                                                                                        \
-        /* if the kv is a new one initialize some stuff, otherwise update only the value */                                      \
-        if (!DHM_IS_KV_TAKEN((dhm)->data[__dhmi_hashIdx])) {                                                                     \
-            (dhm)->count++;                                                                                                      \
-            if (__dhmi_hashIdx == __dhmi_initialHashIdx) {                                                                       \
-                DynamicHashmapInsertAddress(dhm, __dhmi_hashIdx);                                                                \
-                (dhm)->data[__dhmi_hashIdx].state = DHM_KV_TAKEN_HEAD;                                                           \
-            } else {                                                                                                             \
-                (dhm)->data[__dhmi_hashIdx].state = DHM_KV_TAKEN;                                                                \
-            }                                                                                                                    \
-            (dhm)->data[__dhmi_hashIdx].key = (k);                                                                               \
-        }                                                                                                                        \
-        (dhm)->data[__dhmi_hashIdx].value = (v);                                                                                 \
+#define DYNAMIC_HASHMAP_INSERT_NOGROW(dhm, k, v)                                                                               \
+    do {                                                                                                                       \
+        DHM_UInt __dhmi_hashIdx = (dhm)->hashFunc((k)) % (dhm)->capacity;                                                      \
+        DHM_UInt __dhmi_initialHashIdx = __dhmi_hashIdx;                                                                       \
+        while (DHM_IS_KV_TAKEN((dhm)->data[__dhmi_hashIdx]) && (dhm)->cmpKeyFunc((k), (dhm)->data[__dhmi_hashIdx].key) != 0) { \
+            __dhmi_hashIdx = (__dhmi_hashIdx + 1) % (dhm)->capacity;                                                           \
+        }                                                                                                                      \
+        /* if the kv is a new one initialize some stuff, otherwise update only the value */                                    \
+        if (!DHM_IS_KV_TAKEN((dhm)->data[__dhmi_hashIdx])) {                                                                   \
+            (dhm)->count++;                                                                                                    \
+            if (__dhmi_hashIdx == __dhmi_initialHashIdx) {                                                                     \
+                DynamicHashmapInsertAddress(dhm, __dhmi_hashIdx);                                                              \
+                (dhm)->data[__dhmi_hashIdx].state = DHM_KV_TAKEN_HEAD;                                                         \
+            } else {                                                                                                           \
+                (dhm)->data[__dhmi_hashIdx].state = DHM_KV_TAKEN;                                                              \
+            }                                                                                                                  \
+            (dhm)->data[__dhmi_hashIdx].key = (k);                                                                             \
+        }                                                                                                                      \
+        (dhm)->data[__dhmi_hashIdx].value = (v);                                                                               \
     } while (0)
 
 #define DynamicHashmapInsert(dhm, k, v)                                    \
     do {                                                                   \
         DYNAMIC_HASHMAP_HASH_ASSERT(dhm);                                  \
         DYNAMIC_HASHMAP_CMP_ASSERT(dhm);                                   \
-        DynamicHashmapReserve((dhm), (dhm)->count + (dhm)->count / 4 + 1); \
+        DynamicHashmapReserve((dhm), (dhm)->count + (dhm)->count / 3 + 2); \
         DYNAMIC_HASHMAP_INSERT_NOGROW((dhm), (k), (v));                    \
     } while (0)
 
-#define DYNAMIC_HASHMAP_FIND_KEY_INDEX(dhm, k, i)                                                                                                             \
-    while ((((dhm)->data[(i)].state == DHM_KV_DELETED) || ((dhm)->data[(i)].state != DHM_KV_EMPTY && (dhm)->cmpKeyFunc(&(k), &(dhm)->data[(i)].key) != 0))) { \
-        i = ((i) + 1) % (dhm)->capacity;                                                                                                                      \
+#define DYNAMIC_HASHMAP_FIND_KEY_INDEX(dhm, k, i)                                                                                                           \
+    while ((((dhm)->data[(i)].state == DHM_KV_DELETED) || ((dhm)->data[(i)].state != DHM_KV_EMPTY && (dhm)->cmpKeyFunc((k), (dhm)->data[(i)].key) != 0))) { \
+        i = ((i) + 1) % (dhm)->capacity;                                                                                                                    \
     }
 
 #define DynamicHashmapRemove(dhm, k)                                                                                                          \
@@ -189,10 +189,10 @@ typedef DYNAMIC_HASHMAP_UINT DHM_UInt;
         if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                                                                 \
             DYNAMIC_HASHMAP_HASH_ASSERT(dhm);                                                                                                 \
             DYNAMIC_HASHMAP_CMP_ASSERT(dhm);                                                                                                  \
-            DHM_UInt __dhmr_hashIdx = (dhm)->hashFunc(&(k)) % (dhm)->capacity;                                                                \
+            DHM_UInt __dhmr_hashIdx = (dhm)->hashFunc((k)) % (dhm)->capacity;                                                                 \
             DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmr_hashIdx);                                                                       \
             if (DHM_IS_KV_TAKEN((dhm)->data[__dhmr_hashIdx])) {                                                                               \
-                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc(&(k), &(dhm)->data[__dhmr_hashIdx].key) == 0);                                       \
+                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc((k), (dhm)->data[__dhmr_hashIdx].key) == 0);                                         \
                 (dhm)->count--;                                                                                                               \
                 if ((dhm)->data[__dhmr_hashIdx].state == DHM_KV_TAKEN_HEAD) {                                                                 \
                     DHM_Int __dhmr_nextIdx = (__dhmr_hashIdx + 1) % (dhm)->capacity;                                                          \
@@ -218,74 +218,74 @@ typedef DYNAMIC_HASHMAP_UINT DHM_UInt;
         }                                                                                                                                     \
     } while (0)
 
-#define DynamicHashmapGetIndex(dhm, k, ret)                                                              \
-    do {                                                                                                 \
-        DHM_Int __dhmgi_ret = -1;                                                                        \
-        if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                            \
-            DHM_UInt __dhmgi_hashIdx = (dhm)->hashFunc(&(k)) % (dhm)->capacity;                          \
-            DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmgi_hashIdx);                                 \
-            if (DHM_IS_KV_TAKEN((dhm)->data[__dhmgi_hashIdx])) {                                         \
-                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc(&(k), &(dhm)->data[__dhmgi_hashIdx].key) == 0); \
-                __dhmgi_ret = __dhmgi_hashIdx;                                                           \
-            }                                                                                            \
-        }                                                                                                \
-        ret = __dhmgi_ret;                                                                               \
+#define DynamicHashmapGetIndex(dhm, k, ret)                                                            \
+    do {                                                                                               \
+        DHM_Int __dhmgi_ret = -1;                                                                      \
+        if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                          \
+            DHM_UInt __dhmgi_hashIdx = (dhm)->hashFunc((k)) % (dhm)->capacity;                         \
+            DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmgi_hashIdx);                               \
+            if (DHM_IS_KV_TAKEN((dhm)->data[__dhmgi_hashIdx])) {                                       \
+                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc((k), (dhm)->data[__dhmgi_hashIdx].key) == 0); \
+                __dhmgi_ret = __dhmgi_hashIdx;                                                         \
+            }                                                                                          \
+        }                                                                                              \
+        ret = __dhmgi_ret;                                                                             \
     } while (0)
 
-#define DynamicHashmapGetValue(dhm, k, ret)                                                              \
-    do {                                                                                                 \
-        typeof((dhm)->data[0].value) __dhmgv_ret = {};                                                   \
-        if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                            \
-            DHM_UInt __dhmgv_hashIdx = (dhm)->hashFunc(&(k)) % (dhm)->capacity;                          \
-            DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmgv_hashIdx);                                 \
-            if (DHM_IS_KV_TAKEN((dhm)->data[__dhmgv_hashIdx])) {                                         \
-                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc(&(k), &(dhm)->data[__dhmgv_hashIdx].key) == 0); \
-                __dhmgv_ret = (dhm)->data[__dhmgv_hashIdx].value;                                        \
-            }                                                                                            \
-        }                                                                                                \
-        ret = __dhmgv_ret;                                                                               \
+#define DynamicHashmapGetValue(dhm, k, ret)                                                            \
+    do {                                                                                               \
+        typeof((dhm)->data[0].value) __dhmgv_ret = {};                                                 \
+        if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                          \
+            DHM_UInt __dhmgv_hashIdx = (dhm)->hashFunc((k)) % (dhm)->capacity;                         \
+            DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmgv_hashIdx);                               \
+            if (DHM_IS_KV_TAKEN((dhm)->data[__dhmgv_hashIdx])) {                                       \
+                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc((k), (dhm)->data[__dhmgv_hashIdx].key) == 0); \
+                __dhmgv_ret = (dhm)->data[__dhmgv_hashIdx].value;                                      \
+            }                                                                                          \
+        }                                                                                              \
+        ret = __dhmgv_ret;                                                                             \
     } while (0)
 
-#define DynamicHashmapGetValuePtr(dhm, k, ret)                                                            \
-    do {                                                                                                  \
-        typeof((dhm)->data[0].value) *__dhmgvp_ret = nullptr;                                             \
-        if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                             \
-            DHM_UInt __dhmgvp_hashIdx = (dhm)->hashFunc(&(k)) % (dhm)->capacity;                          \
-            DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmgvp_hashIdx);                                 \
-            if (DHM_IS_KV_TAKEN((dhm)->data[__dhmgvp_hashIdx])) {                                         \
-                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc(&(k), &(dhm)->data[__dhmgvp_hashIdx].key) == 0); \
-                __dhmgvp_ret = &(dhm)->data[__dhmgvp_hashIdx].value;                                      \
-            }                                                                                             \
-        }                                                                                                 \
-        ret = __dhmgvp_ret;                                                                               \
+#define DynamicHashmapGetValuePtr(dhm, k, ret)                                                          \
+    do {                                                                                                \
+        typeof((dhm)->data[0].value) *__dhmgvp_ret = nullptr;                                           \
+        if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                           \
+            DHM_UInt __dhmgvp_hashIdx = (dhm)->hashFunc((k)) % (dhm)->capacity;                         \
+            DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmgvp_hashIdx);                               \
+            if (DHM_IS_KV_TAKEN((dhm)->data[__dhmgvp_hashIdx])) {                                       \
+                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc((k), (dhm)->data[__dhmgvp_hashIdx].key) == 0); \
+                __dhmgvp_ret = &(dhm)->data[__dhmgvp_hashIdx].value;                                    \
+            }                                                                                           \
+        }                                                                                               \
+        ret = __dhmgvp_ret;                                                                             \
     } while (0)
 
-#define DynamicHashmapGetKeyValue(dhm, k, ret)                                                            \
-    do {                                                                                                  \
-        typeof((dhm)->data[0]) __dhmgkv_ret = {};                                                         \
-        if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                             \
-            DHM_UInt __dhmgkv_hashIdx = (dhm)->hashFunc(&(k)) % (dhm)->capacity;                          \
-            DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmgkv_hashIdx);                                 \
-            if (DHM_IS_KV_TAKEN((dhm)->data[__dhmgkv_hashIdx])) {                                         \
-                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc(&(k), &(dhm)->data[__dhmgkv_hashIdx].key) == 0); \
-                __dhmgkv_ret = (dhm)->data[__dhmgkv_hashIdx];                                             \
-            }                                                                                             \
-        }                                                                                                 \
-        ret = __dhmgkv_ret;                                                                               \
+#define DynamicHashmapGetKeyValue(dhm, k, ret)                                                          \
+    do {                                                                                                \
+        typeof((dhm)->data[0]) __dhmgkv_ret = {};                                                       \
+        if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                           \
+            DHM_UInt __dhmgkv_hashIdx = (dhm)->hashFunc((k)) % (dhm)->capacity;                         \
+            DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmgkv_hashIdx);                               \
+            if (DHM_IS_KV_TAKEN((dhm)->data[__dhmgkv_hashIdx])) {                                       \
+                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc((k), (dhm)->data[__dhmgkv_hashIdx].key) == 0); \
+                __dhmgkv_ret = (dhm)->data[__dhmgkv_hashIdx];                                           \
+            }                                                                                           \
+        }                                                                                               \
+        ret = __dhmgkv_ret;                                                                             \
     } while (0)
 
-#define DynamicHashmapGetKeyValuePtr(dhm, k, ret)                                                         \
-    do {                                                                                                  \
-        typeof((dhm)->data[0]) *__dhmgvp_ret = nullptr;                                                   \
-        if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                             \
-            DHM_UInt __dhmgvp_hashIdx = (dhm)->hashFunc(&(k)) % (dhm)->capacity;                          \
-            DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmgvp_hashIdx);                                 \
-            if (DHM_IS_KV_TAKEN((dhm)->data[__dhmgvp_hashIdx])) {                                         \
-                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc(&(k), &(dhm)->data[__dhmgvp_hashIdx].key) == 0); \
-                __dhmgvp_ret = &(dhm)->data[__dhmgvp_hashIdx];                                            \
-            }                                                                                             \
-        }                                                                                                 \
-        ret = __dhmgvp_ret;                                                                               \
+#define DynamicHashmapGetKeyValuePtr(dhm, k, ret)                                                       \
+    do {                                                                                                \
+        typeof((dhm)->data[0]) *__dhmgvp_ret = nullptr;                                                 \
+        if (!DYNAMIC_HASHMAP_IS_EMPTY(dhm)) {                                                           \
+            DHM_UInt __dhmgvp_hashIdx = (dhm)->hashFunc((k)) % (dhm)->capacity;                         \
+            DYNAMIC_HASHMAP_FIND_KEY_INDEX((dhm), (k), __dhmgvp_hashIdx);                               \
+            if (DHM_IS_KV_TAKEN((dhm)->data[__dhmgvp_hashIdx])) {                                       \
+                DYNAMIC_HASHMAP_ASSERT((dhm)->cmpKeyFunc((k), (dhm)->data[__dhmgvp_hashIdx].key) == 0); \
+                __dhmgvp_ret = &(dhm)->data[__dhmgvp_hashIdx];                                          \
+            }                                                                                           \
+        }                                                                                               \
+        ret = __dhmgvp_ret;                                                                             \
     } while (0)
 
 #define DynamicHashmapForeach(var, dhm)                                                                                                                                                                                             \
